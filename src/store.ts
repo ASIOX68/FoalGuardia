@@ -14,6 +14,7 @@ export interface Alert {
   boxId: string;
   type: string; // e.g. "Jument couchée"
   message: string;
+  status: 'active' | 'resolved';
 }
 
 interface AppState {
@@ -21,6 +22,7 @@ interface AppState {
   vetNumber: string;
   boxes: Box[];
   alerts: Alert[];
+  themeMode: 'light' | 'dark';
   
   setHarasName: (name: string) => void;
   setVetNumber: (number: string) => void;
@@ -29,8 +31,9 @@ interface AppState {
   removeBox: (boxId: string) => void;
   
   addAlert: (alert: Alert) => void;
-  removeAlert: (id: string) => void;
-  clearAlerts: () => void;
+  resolveAlert: (id: string) => void;
+
+  toggleTheme: () => void;
 }
 
 export const useStore = create<AppState>()(
@@ -40,6 +43,7 @@ export const useStore = create<AppState>()(
       vetNumber: '',
       boxes: [],
       alerts: [],
+      themeMode: 'dark',
 
       setHarasName: (name) => set({ harasName: name }),
       
@@ -62,12 +66,15 @@ export const useStore = create<AppState>()(
           alerts: [alert, ...state.alerts], // prepended
         })),
 
-      removeAlert: (id) =>
+      resolveAlert: (id) =>
         set((state) => ({
-          alerts: state.alerts.filter((a) => a.id !== id),
+          alerts: state.alerts.map((a) => a.id === id ? { ...a, status: 'resolved' } : a),
         })),
 
-      clearAlerts: () => set({ alerts: [] }),
+      toggleTheme: () =>
+        set((state) => ({
+          themeMode: state.themeMode === 'dark' ? 'light' : 'dark',
+        })),
     }),
     {
       name: 'stable-alert-storage-v2', // Changed storage key to avoid issues with old schema

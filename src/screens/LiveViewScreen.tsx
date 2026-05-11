@@ -1,9 +1,11 @@
 import React, { useRef, useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Dimensions, Linking, Alert as RNAlert } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
+import * as MediaLibrary from 'expo-media-library';
+import { captureRef } from 'react-native-view-shot';
 import { RootStackParamList } from '../Navigation';
 import { useStore } from '../store';
-import { theme } from '../theme';
+import { useAppTheme } from '../theme';
 import { Ionicons } from '@expo/vector-icons';
 import { Video, ResizeMode } from 'expo-av';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -15,7 +17,10 @@ const { width } = Dimensions.get('window');
 export default function LiveViewScreen({ route, navigation }: Props) {
   const { boxId } = route.params;
   const { harasName, boxes, alerts, vetNumber } = useStore();
+  const theme = useAppTheme();
+  const styles = React.useMemo(() => makeStyles(theme), [theme]);
   const video = useRef<Video>(null);
+  const viewRef = useRef<View>(null);
   const [status, setStatus] = useState({});
   const [error, setError] = useState<string | null>(null);
 
@@ -58,6 +63,29 @@ export default function LiveViewScreen({ route, navigation }: Props) {
     Linking.openURL(`tel:${vetNumber}`);
   };
 
+  const handleCapture = async () => {
+    try {
+      const { status } = await MediaLibrary.requestPermissionsAsync();
+      if (status !== 'granted') {
+        RNAlert.alert('Permission requise', 'Vous devez autoriser l\'accès à la galerie pour sauvegarder des captures.');
+        return;
+      }
+
+      if (viewRef.current) {
+        const uri = await captureRef(viewRef, {
+          format: 'jpg',
+          quality: 0.9,
+        });
+        
+        await MediaLibrary.saveToLibraryAsync(uri);
+        RNAlert.alert('Succès', 'La capture a été enregistrée dans la pellicule !');
+      }
+    } catch (error) {
+      console.error(error);
+      RNAlert.alert('Erreur', 'Impossible de capturer l\'image.');
+    }
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       {/* Header overlay */}
@@ -76,7 +104,7 @@ export default function LiveViewScreen({ route, navigation }: Props) {
       </View>
 
       {/* Video Player */}
-      <View style={styles.videoContainer}>
+      <View style={styles.videoContainer} ref={viewRef}>
         <Video
           ref={video}
           style={styles.video}
@@ -114,7 +142,7 @@ export default function LiveViewScreen({ route, navigation }: Props) {
 
       {/* Controls Overlay */}
       <View style={styles.controlsContainer}>
-        <TouchableOpacity style={styles.controlButton}>
+        <TouchableOpacity style={styles.controlButton} onPress={handleCapture}>
           <Ionicons name="camera-outline" size={32} color={theme.colors.text} />
           <Text style={styles.controlText}>Capture</Text>
         </TouchableOpacity>
@@ -127,7 +155,7 @@ export default function LiveViewScreen({ route, navigation }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (theme: any) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#000', // Black background for video full screen feel

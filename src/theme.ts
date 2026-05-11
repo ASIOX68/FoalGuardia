@@ -1,17 +1,36 @@
+import { useStore } from './store';
+
+export const darkColors = {
+  background: '#0b121e', // deeper navy from DESIGN.md text
+  surface: '#161f2c', // cards and containers
+  border: '#1e293b',
+  text: '#dce2f4',
+  textMuted: '#8d919b',
+  primary: '#2b5797', // Blue (Confirmations, navigation)
+  primaryActive: '#aac7ff',
+  secondary: '#4e8c57', // Green (Primary actions)
+  warning: '#c67c2d', // Orange (Direct emergency)
+  danger: '#a62626', // Red (High-priority alerts)
+  dangerBackground: '#93000a',
+};
+
+export const lightColors = {
+  background: '#f8fafc', // Very light grey/blue
+  surface: '#ffffff', // white cards
+  border: '#e2e8f0',
+  text: '#0f172a',
+  textMuted: '#64748b',
+  primary: '#3b82f6', 
+  primaryActive: '#2563eb',
+  secondary: '#16a34a', 
+  warning: '#ea580c',
+  danger: '#dc2626', 
+  dangerBackground: '#fef2f2',
+};
+
 export const theme = {
-  colors: {
-    background: '#0b121e', // deeper navy from DESIGN.md text
-    surface: '#161f2c', // cards and containers
-    border: '#1e293b',
-    text: '#dce2f4',
-    textMuted: '#8d919b',
-    primary: '#2b5797', // Blue (Confirmations, navigation)
-    primaryActive: '#aac7ff',
-    secondary: '#4e8c57', // Green (Primary actions)
-    warning: '#c67c2d', // Orange (Direct emergency)
-    danger: '#a62626', // Red (High-priority alerts)
-    dangerBackground: '#93000a',
-  },
+  colors: darkColors, // Default fallback
+
   spacing: {
     xs: 4,
     sm: 8, // 8px baseline
@@ -41,4 +60,12 @@ export const theme = {
       bold: '700' as const,
     },
   },
+};
+
+export const useAppTheme = () => {
+  const themeMode = useStore((state) => state.themeMode);
+  return {
+    ...theme,
+    colors: themeMode === 'light' ? lightColors : darkColors,
+  };
 };

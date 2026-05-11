@@ -4,7 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../Navigation';
 import { useStore, Box } from '../store';
-import { theme } from '../theme';
+import { useAppTheme } from '../theme';
 import { Ionicons } from '@expo/vector-icons';
 
 type Props = {
@@ -13,6 +13,8 @@ type Props = {
 
 export default function DashboardScreen({ navigation }: Props) {
   const { harasName, vetNumber, boxes, alerts, addBox, removeBox } = useStore();
+  const theme = useAppTheme();
+  const styles = React.useMemo(() => makeStyles(theme), [theme]);
   
   const [isAddBoxModalVisible, setAddBoxModalVisible] = useState(false);
   const [newBoxLabel, setNewBoxLabel] = useState('');
@@ -40,12 +42,13 @@ export default function DashboardScreen({ navigation }: Props) {
     setNewBoxIp(formatted);
   };
 
-  const criticalAlerts = alerts.filter(a => a.type === 'Jument couchée' || a.type === 'Poche visible');
+  const activeAlerts = alerts.filter(a => a.status === 'active');
+  const criticalAlerts = activeAlerts.filter(a => a.type === 'Jument couchée' || a.type === 'Poche visible');
 
   const getGlobalStatus = () => {
     if (boxes.length === 0) return { text: "Aucun box", color: theme.colors.textMuted };
     if (criticalAlerts.length > 0) return { text: `${criticalAlerts.length} URGENCE(S)`, color: theme.colors.danger };
-    if (alerts.length > 0) return { text: "Activité suspecte", color: theme.colors.warning };
+    if (activeAlerts.length > 0) return { text: "Activité suspecte", color: theme.colors.warning };
     return { text: "Calme", color: theme.colors.secondary };
   };
 
@@ -100,7 +103,7 @@ export default function DashboardScreen({ navigation }: Props) {
   };
 
   const getBoxStatus = (boxId: string) => {
-    const boxAlert = alerts.find(a => a.boxId === boxId);
+    const boxAlert = activeAlerts.find(a => a.boxId === boxId);
     if (!boxAlert) return { text: "OK", color: theme.colors.secondary, icon: "checkmark-circle" };
     
     const isCritical = boxAlert.type === 'Jument couchée' || boxAlert.type === 'Poche visible';
@@ -169,10 +172,10 @@ export default function DashboardScreen({ navigation }: Props) {
           style={styles.quickActionBtn}
           onPress={() => navigation.navigate('Alerts' as any)}
         >
-          <View style={[styles.quickActionIcon, { backgroundColor: alerts.length > 0 ? theme.colors.danger : theme.colors.surface }]}>
-            <Ionicons name="notifications" size={28} color={alerts.length > 0 ? "#fff" : theme.colors.text} />
-            {alerts.length > 0 && (
-              <View style={styles.badge}><Text style={styles.badgeText}>{alerts.length}</Text></View>
+          <View style={[styles.quickActionIcon, { backgroundColor: activeAlerts.length > 0 ? theme.colors.danger : theme.colors.surface }]}>
+            <Ionicons name="notifications" size={28} color={activeAlerts.length > 0 ? "#fff" : theme.colors.text} />
+            {activeAlerts.length > 0 && (
+              <View style={styles.badge}><Text style={styles.badgeText}>{activeAlerts.length}</Text></View>
             )}
           </View>
           <Text style={styles.quickActionText}>Alertes</Text>
@@ -283,7 +286,7 @@ export default function DashboardScreen({ navigation }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (theme: any) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: theme.colors.background,

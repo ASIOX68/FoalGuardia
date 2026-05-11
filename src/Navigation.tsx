@@ -1,9 +1,11 @@
-import React from 'react';
-import { NavigationContainer, DarkTheme } from '@react-navigation/native';
+import React, { useMemo } from 'react';
+import { View, Text } from 'react-native';
+import { NavigationContainer, DarkTheme, DefaultTheme } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createMaterialTopTabNavigator } from '@react-navigation/material-top-tabs';
 import { Ionicons } from '@expo/vector-icons';
-import { theme } from './theme';
+import { useAppTheme } from './theme';
+import { useStore } from './store';
 
 import DashboardScreen from './screens/DashboardScreen';
 import AlertsScreen from './screens/AlertsScreen';
@@ -25,6 +27,10 @@ const Stack = createNativeStackNavigator<RootStackParamList>();
 const Tab = createMaterialTopTabNavigator<MainTabParamList>();
 
 function MainTabs() {
+  const alerts = useStore((state) => state.alerts);
+  const activeAlerts = alerts.filter(a => a.status === 'active');
+  const theme = useAppTheme();
+
   return (
     <Tab.Navigator
       tabBarPosition="bottom"
@@ -59,7 +65,29 @@ function MainTabs() {
             iconName = 'help-circle-outline';
           }
 
-          return <Ionicons name={iconName} size={24} color={color} />;
+          return (
+            <React.Fragment>
+              <Ionicons name={iconName} size={24} color={color} />
+              {route.name === 'Alerts' && activeAlerts.length > 0 && (
+                <View style={{
+                  position: 'absolute',
+                  top: -4,
+                  right: -4,
+                  backgroundColor: theme.colors.danger,
+                  borderRadius: 10,
+                  minWidth: 20,
+                  height: 20,
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                  paddingHorizontal: 4,
+                }}>
+                  <Text style={{ color: '#fff', fontSize: 10, fontWeight: 'bold' }}>
+                    {activeAlerts.length > 99 ? '99+' : activeAlerts.length}
+                  </Text>
+                </View>
+              )}
+            </React.Fragment>
+          );
         },
         tabBarShowLabel: false, // We'll just show icons like a standard app to keep it clean
       })}
@@ -71,20 +99,26 @@ function MainTabs() {
   );
 }
 
-const CustomDarkTheme = {
-  ...DarkTheme,
-  colors: {
-    ...DarkTheme.colors,
-    background: theme.colors.background,
-    card: theme.colors.surface,
-    text: theme.colors.text,
-    border: theme.colors.border,
-  },
-};
-
 export default function Navigation() {
+  const theme = useAppTheme();
+  const themeMode = useStore((state) => state.themeMode);
+
+  const navigationTheme = useMemo(() => {
+    const baseTheme = themeMode === 'light' ? DefaultTheme : DarkTheme;
+    return {
+      ...baseTheme,
+      colors: {
+        ...baseTheme.colors,
+        background: theme.colors.background,
+        card: theme.colors.surface,
+        text: theme.colors.text,
+        border: theme.colors.border,
+      },
+    };
+  }, [themeMode, theme.colors]);
+
   return (
-    <NavigationContainer theme={CustomDarkTheme}>
+    <NavigationContainer theme={navigationTheme}>
       <Stack.Navigator screenOptions={{ headerShown: false }}>
         <Stack.Screen name="MainTabs" component={MainTabs} />
         <Stack.Screen 

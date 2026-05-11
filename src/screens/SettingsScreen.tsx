@@ -1,12 +1,15 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Alert as RNAlert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import * as Notifications from 'expo-notifications';
 import { useStore } from '../store';
-import { theme } from '../theme';
+import { useAppTheme } from '../theme';
 import { Ionicons } from '@expo/vector-icons';
 
 export default function SettingsScreen() {
-  const { harasName, setHarasName, vetNumber, setVetNumber, boxes, addAlert } = useStore();
+  const { harasName, setHarasName, vetNumber, setVetNumber, boxes, addAlert, themeMode, toggleTheme } = useStore();
+  const theme = useAppTheme();
+  const styles = React.useMemo(() => makeStyles(theme), [theme]);
   
   const [localHarasName, setLocalHarasName] = useState(harasName);
   const [localVetPhone, setLocalVetPhone] = useState(vetNumber);
@@ -48,9 +51,23 @@ export default function SettingsScreen() {
       timestamp: Date.now(),
       boxId: randomBox.id,
       type: randomType,
-      message: `L'IA a détecté: ${randomType} dans le ${randomBox.label}.`
+      message: `L'IA a détecté: ${randomType} dans le ${randomBox.label}.`,
+      status: 'active'
     });
     
+    const isCritical = randomType === "Jument couchée" || randomType === "Poche visible";
+
+    Notifications.scheduleNotificationAsync({
+      content: {
+        title: isCritical ? "🚨 URGENCE POULINAGE !" : "Activité détectée",
+        body: `${randomType} dans le ${randomBox.label}`,
+        sound: true,
+        priority: isCritical ? Notifications.AndroidNotificationPriority.MAX : Notifications.AndroidNotificationPriority.DEFAULT,
+        interruptionLevel: isCritical ? 'timeSensitive' : 'active', // For iOS Do Not Disturb bypass
+      },
+      trigger: null, // Send immediately
+    });
+
     RNAlert.alert("Alerte simulée", `Une alerte a été générée pour ${randomBox.label}.`);
   };
 
@@ -89,10 +106,20 @@ export default function SettingsScreen() {
       </View>
 
       <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Apparence</Text>
+        <TouchableOpacity style={[styles.button, { backgroundColor: theme.colors.surface, borderWidth: 1, borderColor: theme.colors.border }]} onPress={toggleTheme}>
+          <Ionicons name={themeMode === 'light' ? "moon-outline" : "sunny-outline"} size={24} color={theme.colors.text} style={{marginRight: 8}} />
+          <Text style={[styles.buttonText, { color: theme.colors.text }]}>
+            {themeMode === 'light' ? "Passer en Mode Nuit" : "Passer en Mode Jour"}
+          </Text>
+        </TouchableOpacity>
+      </View>
+
+      <View style={styles.section}>
         <Text style={styles.sectionTitle}>Outils de Test</Text>
         <TouchableOpacity style={[styles.button, styles.buttonDanger]} onPress={simulateAlert}>
-          <Ionicons name="warning-outline" size={24} color={theme.colors.text} style={{marginRight: 8}} />
-          <Text style={styles.buttonText}>Simuler une Alerte IA</Text>
+          <Ionicons name="warning-outline" size={24} color="#fff" style={{marginRight: 8}} />
+          <Text style={[styles.buttonText, { color: '#fff' }]}>Simuler une Alerte IA</Text>
         </TouchableOpacity>
       </View>
 
@@ -101,7 +128,7 @@ export default function SettingsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (theme: any) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: theme.colors.background,

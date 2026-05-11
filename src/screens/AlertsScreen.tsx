@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity, Alert as RNAlert, Linking, Modal, Pressable } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useStore, Alert as StoreAlert } from '../store';
-import { theme } from '../theme';
+import { useAppTheme } from '../theme';
 import { Ionicons } from '@expo/vector-icons';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../Navigation';
@@ -12,8 +12,13 @@ type Props = {
 };
 
 export default function AlertsScreen({ navigation }: Props) {
-  const { alerts, boxes, vetNumber, clearAlerts, removeAlert } = useStore();
+  const { alerts, boxes, vetNumber, resolveAlert } = useStore();
+  const theme = useAppTheme();
+  const styles = React.useMemo(() => makeStyles(theme), [theme]);
   const [selectedAlert, setSelectedAlert] = useState<StoreAlert | null>(null);
+  const [activeTab, setActiveTab] = useState<'active' | 'resolved'>('active');
+
+  const displayedAlerts = alerts.filter(a => a.status === activeTab);
 
   const getBoxName = (boxId: string) => {
     const b = boxes.find(b => b.id === boxId);
@@ -47,7 +52,7 @@ export default function AlertsScreen({ navigation }: Props) {
       Linking.openURL(`tel:${vetNumber}`);
       setSelectedAlert(null);
     } else if (action === 'cancel') {
-      removeAlert(selectedAlert.id);
+      resolveAlert(selectedAlert.id);
       setSelectedAlert(null);
     }
   };
@@ -81,23 +86,33 @@ export default function AlertsScreen({ navigation }: Props) {
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <View style={styles.header}>
-        <Text style={styles.title}>Historique des Alertes</Text>
-        {alerts.length > 0 && (
-          <TouchableOpacity onPress={clearAlerts} style={styles.clearButton}>
-            <Text style={styles.clearButtonText}>Effacer</Text>
-          </TouchableOpacity>
-        )}
+        <Text style={styles.title}>Alertes</Text>
       </View>
 
-      {alerts.length === 0 ? (
+      <View style={styles.tabContainer}>
+        <TouchableOpacity 
+          style={[styles.tabButton, activeTab === 'active' && styles.tabButtonActive]}
+          onPress={() => setActiveTab('active')}
+        >
+          <Text style={[styles.tabText, activeTab === 'active' && styles.tabTextActive]}>En cours</Text>
+        </TouchableOpacity>
+        <TouchableOpacity 
+          style={[styles.tabButton, activeTab === 'resolved' && styles.tabButtonActive]}
+          onPress={() => setActiveTab('resolved')}
+        >
+          <Text style={[styles.tabText, activeTab === 'resolved' && styles.tabTextActive]}>Historique</Text>
+        </TouchableOpacity>
+      </View>
+
+      {displayedAlerts.length === 0 ? (
         <View style={styles.emptyContainer}>
           <Ionicons name="checkmark-circle-outline" size={64} color={theme.colors.secondary} />
-          <Text style={styles.emptyText}>Aucune alerte récente.</Text>
-          <Text style={styles.emptySubtext}>Tout est calme dans l'écurie.</Text>
+          <Text style={styles.emptyText}>{activeTab === 'active' ? "Aucune alerte en cours." : "L'historique est vide."}</Text>
+          <Text style={styles.emptySubtext}>{activeTab === 'active' ? "Tout est calme dans l'écurie." : ""}</Text>
         </View>
       ) : (
         <FlatList
-          data={alerts}
+          data={displayedAlerts}
           keyExtractor={(item) => item.id}
           renderItem={renderItem}
           contentContainerStyle={styles.listContainer}
@@ -137,13 +152,15 @@ export default function AlertsScreen({ navigation }: Props) {
                   <Text style={styles.modalButtonText}>Appeler le Véto</Text>
                 </TouchableOpacity>
 
-                <TouchableOpacity 
-                  style={[styles.modalButton, { backgroundColor: theme.colors.danger }]}
-                  onPress={() => handleAction('cancel')}
-                >
-                  <Ionicons name="checkmark-circle" size={24} color={theme.colors.text} style={{ marginRight: 12 }} />
-                  <Text style={styles.modalButtonText}>Tout est OK (Annuler l'alerte)</Text>
-                </TouchableOpacity>
+                {selectedAlert.status === 'active' && (
+                  <TouchableOpacity 
+                    style={[styles.modalButton, { backgroundColor: theme.colors.danger }]}
+                    onPress={() => handleAction('cancel')}
+                  >
+                    <Ionicons name="checkmark-circle" size={24} color={theme.colors.text} style={{ marginRight: 12 }} />
+                    <Text style={styles.modalButtonText}>Tout est OK (Résoudre)</Text>
+                  </TouchableOpacity>
+                )}
 
                 <TouchableOpacity 
                   style={styles.modalCancelButton}
@@ -160,7 +177,7 @@ export default function AlertsScreen({ navigation }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (theme: any) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: theme.colors.background,
@@ -177,15 +194,30 @@ const styles = StyleSheet.create({
     fontWeight: theme.typography.weights.bold,
     color: theme.colors.text,
   },
-  clearButton: {
-    padding: theme.spacing.md,
-    minHeight: 48,
-    justifyContent: 'center',
+  tabContainer: {
+    flexDirection: 'row',
+    marginHorizontal: theme.spacing.lg,
+    marginBottom: theme.spacing.lg,
+    backgroundColor: theme.colors.surface,
+    borderRadius: theme.borderRadius.md,
+    padding: 4,
   },
-  clearButtonText: {
-    color: theme.colors.primaryActive,
+  tabButton: {
+    flex: 1,
+    paddingVertical: theme.spacing.md,
+    alignItems: 'center',
+    borderRadius: theme.borderRadius.sm,
+  },
+  tabButtonActive: {
+    backgroundColor: theme.colors.border,
+  },
+  tabText: {
+    color: theme.colors.textMuted,
     fontSize: theme.typography.sizes.md,
-    fontWeight: theme.typography.weights.semibold,
+    fontWeight: theme.typography.weights.bold,
+  },
+  tabTextActive: {
+    color: theme.colors.text,
   },
   listContainer: {
     paddingHorizontal: theme.spacing.lg,
